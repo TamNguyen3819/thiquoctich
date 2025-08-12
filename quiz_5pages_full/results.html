@@ -16,12 +16,14 @@
   button { border:0; border-radius:12px; padding:12px 16px; font-weight:600; cursor:pointer; }
   .ghost { background:#e2e8f0; }
   .primary { background:#2563eb; color:#fff; }
+  .ok { background:#dcfce7; color:#166534; }
+  .warn { background:#fee2e2; color:#7f1d1d; }
 </style>
 </head>
 <body>
 <header>
   <h1 style="margin:0">Kết quả</h1>
-  <p class="meta" style="margin-top:6px">Tổng hợp điểm từ 5 trang (20 câu mỗi trang).</p>
+  <p class="meta" style="margin-top:6px">Tổng hợp điểm từ 5 trang (20 câu mỗi trang). “Hiện đáp án” chỉ khả dụng sau khi trả lời hết và đã nộp trang.</p>
 </header>
 <main>
   <div class="card">
@@ -33,38 +35,85 @@
       <button class="ghost" id="btn-print">In / Lưu PDF</button>
     </div>
   </div>
+
   <div class="card">
     <h3 style="margin:0 0 10px 0;">Chi tiết theo trang</h3>
     <table>
-      <thead><tr><th>Trang</th><th>Điểm</th><th>Trạng thái</th></tr></thead>
+      <thead>
+        <tr>
+          <th>Trang</th>
+          <th>Điểm</th>
+          <th>Tiến độ</th>
+          <th>Hiện đáp án</th>
+        </tr>
+      </thead>
       <tbody id="rows"></tbody>
     </table>
   </div>
 </main>
 <script>
-const STORAGE_KEY = "uscis_vi_2008_quiz_full";
-function loadState(){ const raw = localStorage.getItem(STORAGE_KEY); if(!raw) return { pages:{} }; try{return JSON.parse(raw);}catch(e){return {pages:{}}}}
+const STORAGE_KEY = "uscis_vi_2008_quiz_full"; // must match pages
+
+function loadState(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) return { pages:{} };
+  try { return JSON.parse(raw); } catch(e){ return { pages:{} }; }
+}
+
 function render(){
   const st = loadState();
   const rows = document.getElementById("rows");
   rows.innerHTML = "";
+
   let total=0, max=0;
   for(let page=1; page<=5; page++){
     const p = st.pages[page];
     const tr = document.createElement("tr");
-    if(p){ total += p.score; max += p.total; tr.innerHTML = `<td>${page}</td><td><span class="badge">${p.score} / ${p.total}</span></td><td>Đã nộp</td>`; }
-    else { max += 20; tr.innerHTML = `<td>${page}</td><td><span class="badge">0 / 20</span></td><td>Chưa nộp</td>`; }
+
+    if(p){
+      const answered = Array.isArray(p.answers) ? p.answers.filter(a => a !== null).length : 0;
+      total += (p.score || 0);
+      max   += (p.total || 20);
+
+      const progressText = (answered === (p.total || 20))
+        ? `<span class="badge ok">Đã trả lời hết</span>`
+        : `<span class="badge warn">Đã trả lời ${answered} / ${(p.total || 20)}</span>`;
+
+      const revealText = p.reveal ? `<span class="badge ok">Đã hiện</span>` : `<span class="badge">Chưa hiện</span>`;
+
+      tr.innerHTML = `
+        <td>${page}</td>
+        <td><span class="badge">${p.score || 0} / ${(p.total || 20)}</span></td>
+        <td>${progressText}</td>
+        <td>${revealText}</td>
+      `;
+    } else {
+      max += 20;
+      tr.innerHTML = `
+        <td>${page}</td>
+        <td><span class="badge">0 / 20</span></td>
+        <td><span class="badge">Chưa bắt đầu</span></td>
+        <td><span class="badge">—</span></td>
+      `;
+    }
     rows.appendChild(tr);
   }
+
   document.getElementById("total").textContent = `Total: ${total} / ${max}`;
 }
-document.getElementById("btn-reset").addEventListener("click", ()=>{ localStorage.removeItem(STORAGE_KEY); render(); });
-document.getElementById("btn-print").addEventListener("click", ()=>{ window.print(); });
-document.getElementById("btn-newuser").addEventListener("click", () => {
-localStorage.removeItem("uscis_vi_2008_quiz_full_fetch"); // scores
-localStorage.removeItem("USCIS_USER_ID");                  // user id seed
-location.reload();
+
+document.getElementById("btn-reset").addEventListener("click", ()=>{
+  localStorage.removeItem(STORAGE_KEY);
+  render();
 });
+
+document.getElementById("btn-newuser").addEventListener("click", () => {
+  localStorage.removeItem(STORAGE_KEY);   // wipe scores + reveal flags
+  localStorage.removeItem("USCIS_USER_ID"); // wipe per-user seed (randomization)
+  location.reload();
+});
+
+document.getElementById("btn-print").addEventListener("click", ()=>{ window.print(); });
 
 render();
 </script>
