@@ -227,18 +227,40 @@ function render(){
   });
   updateControls();
 }
+  
+function showToast(msg, ms=2500){
+  const t = document.getElementById("toast");
+  if (!t) return;
+  t.textContent = msg;
+  t.hidden = false;
+  // kick in the transition
+  requestAnimationFrame(()=> t.classList.add("show"));
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(()=>{
+    t.classList.remove("show");
+    setTimeout(()=>{ t.hidden = true; }, 250);
+  }, ms);
+}
 
 function submitPage(){
   submitted = true;
   reveal = false; // do NOT reveal on submit
   let correct = 0;
   for(let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; }
+
   const st = loadState();
   st.pages[PAGE_NUM] = { score: correct, total: QUESTIONS.length, answers, reveal };
   saveState(st);
+
   render();
+
+  // ✅ success indicator (badge + toast)
   const badge = document.getElementById("saved-badge");
-  if (badge) badge.textContent = `Đã lưu: Trang ${PAGE_NUM} — ${correct} / ${QUESTIONS.length}`;
+  if (badge){
+    badge.textContent = `Đã nộp: Trang ${PAGE_NUM} — ${correct} / ${QUESTIONS.length}`;
+    badge.classList.add("success");
+  }
+  showToast(`✅ Đã nộp Trang ${PAGE_NUM}. Điểm: ${correct}/${QUESTIONS.length}`);
 }
 
 function revealPage(){
@@ -255,6 +277,9 @@ function clearSelections(){
   submitted = false;
   reveal = false;
   render();
+  const b2 = document.getElementById("saved-badge");
+if (b2){ b2.textContent = "Chưa lưu"; b2.classList.remove("success"); }
+
   const badge = document.getElementById("saved-badge");
   if (badge) badge.textContent = `Chưa lưu`;
 }
@@ -266,6 +291,18 @@ function loadExisting(){
     answers = Array.isArray(p.answers) ? p.answers : Array(QUESTIONS.length).fill(null);
     submitted = !!p.total;
     reveal = !!p.reveal;
+    const b = document.getElementById("saved-badge");
+if (b){
+  if (submitted){
+    const p = st.pages[PAGE_NUM] || {};
+    b.textContent = `Đã nộp: Trang ${PAGE_NUM} — ${(p.score ?? 0)} / ${(p.total ?? QUESTIONS.length)}`;
+    b.classList.add("success");
+  } else {
+    b.textContent = "Chưa lưu";
+    b.classList.remove("success");
+  }
+}
+
   }
 }
 
