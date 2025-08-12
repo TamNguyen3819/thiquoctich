@@ -29,6 +29,7 @@
     <div class="footer">
       <a class="primary" href="page1.html" style="text-decoration:none;">◀ Về Trang 1</a>
       <button class="ghost" id="btn-reset">Reset tất cả</button>
+      <button class="ghost" id="btn-newuser">New user / re-randomize</button>
       <button class="ghost" id="btn-print">In / Lưu PDF</button>
     </div>
   </div>
@@ -59,6 +60,12 @@ function render(){
 }
 document.getElementById("btn-reset").addEventListener("click", ()=>{ localStorage.removeItem(STORAGE_KEY); render(); });
 document.getElementById("btn-print").addEventListener("click", ()=>{ window.print(); });
+document.getElementById("btn-newuser").addEventListener("click", () => {
+localStorage.removeItem("uscis_vi_2008_quiz_full_fetch"); // scores
+localStorage.removeItem("USCIS_USER_ID");                  // user id seed
+location.reload();
+});
+
 render();
 </script>
 </body>
