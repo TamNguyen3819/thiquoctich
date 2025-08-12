@@ -201,5 +201,17 @@ fetch("./data/questions_vi.json")
     console.error(err);
   });
 </script>
+<script>
+// REMOVE the old: const PAGE_NUM = 1;
+
+const m = location.pathname.match(/page(\d)\.html$/);
+const PAGE_NUM = m ? parseInt(m[1], 10) : 1;
+
+// Sync header/title
+document.title = `USCIS 100 Câu — Trang ${PAGE_NUM}/5`;
+const h1 = document.querySelector('header h1');
+if (h1) h1.textContent = `USCIS 100 Câu — Trang ${PAGE_NUM}/5`;
+</script>
+
 </body>
 </html>
