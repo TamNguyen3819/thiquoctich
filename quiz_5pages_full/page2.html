@@ -51,7 +51,15 @@
   </div>
 </main>
 <script>
-const PAGE_NUM = 2; // <<< CHANGE THIS to 1..5 for each page
+// Auto-detect page number from URL: page1.html ... page5.html
+const m = location.pathname.match(/page(\d+)\.html$/);
+const PAGE_NUM = m ? parseInt(m[1], 10) : 1;
+
+// Keep the header and tab title in sync
+document.title = `USCIS 100 Câu — Trang ${PAGE_NUM}/5`;
+const h1 = document.querySelector('header h1');
+if (h1) h1.textContent = `USCIS 100 Câu — Trang ${PAGE_NUM}/5`;
+
 const STORAGE_KEY = "uscis_vi_2008_quiz_full";
 
 function loadState(){
