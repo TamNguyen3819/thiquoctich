@@ -141,7 +141,10 @@ function render(){
     const title = el("div", {class:"q-title", html: `${(PAGE_NUM-1)*20 + i + 1}. ${q.question}`});
     const correct = (q.answers && q.answers.length) ? q.answers[0] : "";
     if (!CHOICES[i]){
-      const built = makeChoices(correct, POOL, 3);
+      // AFTER:
+          const qid = q.id ?? ((PAGE_NUM-1)*20 + i + 1);
+          const built = makeChoices(correct, POOL, 3, `${userId}|q${qid}`);
+
       CHOICES[i] = { choices: built.opts, answer_index: built.answer_index };
     }
     const choices = el("div", {class:"choices"});
