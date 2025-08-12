@@ -268,6 +268,15 @@ function setupNav(){
 }
 
 // Wire buttons
+document.getElementById("btn-submit").addEventListener("click", ()=>{
+  if (!allAnswered()) { alert("Hãy trả lời đủ 20 câu trước khi nộp."); return; }
+  submitPage();
+});
+document.getElementById("btn-submit2").addEventListener("click", ()=>{
+  if (!allAnswered()) { alert("Hãy trả lời đủ 20 câu trước khi nộp."); return; }
+  submitPage();
+});
+  
 document.getElementById("btn-submit").addEventListener("click", submitPage);
 document.getElementById("btn-submit2").addEventListener("click", submitPage);
 document.getElementById("btn-clear").addEventListener("click", clearSelections);
