@@ -132,6 +132,15 @@ let QUIZ_DATA = null, POOL = null, QUESTIONS = null;
 const CHOICES = {};
 let answers = [], submitted = false, reveal = false;
 
+// Are all questions answered?
+function allAnswered(){
+  return Array.isArray(answers)
+      && Array.isArray(QUESTIONS)
+      && answers.length === QUESTIONS.length
+      && answers.every(a => a !== null);
+}
+
+
 function el(tag, attrs={}, children=[]){
   const e = document.createElement(tag);
   for(const [k,v] of Object.entries(attrs)){
@@ -152,16 +161,26 @@ function updateControls(){
   const sc = document.getElementById("score");
   if (sc){
     let correct = 0;
-    for(let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; }
+    for (let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; }
     const done = answers.filter(a=>a!==null).length;
     sc.textContent = `Đã chọn: ${done} / ${QUESTIONS.length} — Nếu nộp ngay: ${correct} / ${QUESTIONS.length}`;
   }
+
+  // enable Submit only when all answered
+  const canSubmit = allAnswered();
+  const s1 = document.getElementById("btn-submit");
+  const s2 = document.getElementById("btn-submit2");
+  if (s1) s1.disabled = !canSubmit;
+  if (s2) s2.disabled = !canSubmit;
+
+  // Reveal stays disabled until submitted & all answered and not already revealed
+  const enableReveal = submitted && allAnswered() && !reveal;
   const r1 = document.getElementById("btn-reveal");
   const r2 = document.getElementById("btn-reveal2");
-  const enable = canReveal();
-  if (r1) r1.disabled = !enable || reveal;
-  if (r2) r2.disabled = !enable || reveal;
+  if (r1) r1.disabled = !enableReveal;
+  if (r2) r2.disabled = !enableReveal;
 }
+
 
 function render(){
   const root = document.getElementById("quiz");
