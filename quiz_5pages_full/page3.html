@@ -1,16 +1,14 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Trang 3/5 — Trắc nghiệm USCIS 100 câu</title>
+<title>USCIS 100 Câu — Trang 1/5</title>
 <style>
-
   body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; line-height:1.6; margin:0; padding:0; background:#f7f7f9; }
   header { background:#0f172a; color:#fff; padding:24px; }
-  main { max-width:900px; margin:0 auto; padding:24px; }
-  .card { background:#fff; border-radius:16px; box-shadow:0 10px 20px rgba(0,0,0,.06); padding:20px; margin-bottom:16px; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px; }
+  .card { background:#fff; border-radius:16px; box-shadow: 0 10px 20px rgba(0,0,0,.06); padding:20px; margin-bottom:16px; }
   .q-title { font-weight:700; margin-bottom:8px; }
   .meta { color:#475569; font-size:14px; margin-bottom:16px; }
   .choices label { display:block; margin:8px 0; padding:10px 12px; border:1px solid #e2e8f0; border-radius:12px; cursor:pointer; }
@@ -21,24 +19,21 @@
   button { border:0; border-radius:12px; padding:12px 16px; font-weight:600; cursor:pointer; }
   .primary { background:#2563eb; color:#fff; }
   .ghost { background:#e2e8f0; }
-  .score { font-weight:700; }
-  .small { font-size:13px; color:#64748b; }
   .badge { display:inline-block; background:#e2e8f0; border-radius:999px; padding:4px 10px; font-size:12px; color:#334155; }
-
 </style>
 </head>
 <body>
 <header>
-  <h1 style="margin:0">USCIS 100 Câu — Trang 3/5</h1>
-  <p class="small" style="margin-top:6px">Mỗi trang 20 câu. Nộp trang để lưu điểm vào “Kết quả”.</p>
+  <h1 style="margin:0">USCIS 100 Câu — Trang 1/5</h1>
+  <p class="meta" style="margin-top:6px">Mỗi trang 20 câu. Nộp trang để lưu điểm vào “Kết quả”.</p>
 </header>
 <main>
   <div class="card">
     <div class="meta">Page progress: <span id="score" class="badge">0</span></div>
     <div id="saved-badge" class="badge">Not saved</div>
     <div class="footer">
-      <a class="ghost" href="page2.html" style="text-decoration:none;">◀ Trang 2</a>
-      <a class="ghost" href="page4.html" style="text-decoration:none;">Trang 4 ▶</a>
+      <a class="ghost" id="prev" href="#" style="text-decoration:none;display:none;">◀ Trang trước</a>
+      <a class="ghost" id="next" href="#" style="text-decoration:none;">Trang sau ▶</a>
       <button class="primary" id="btn-submit">Submit this page</button>
       <button class="ghost" id="btn-clear">Clear selections</button>
       <button class="ghost" id="btn-results">View Results</button>
@@ -47,17 +42,18 @@
   <div id="quiz"></div>
   <div class="card">
     <div class="footer">
-      <a class="ghost" href="page2.html" style="text-decoration:none;">◀ Trang 2</a>
-      <a class="ghost" href="page4.html" style="text-decoration:none;">Trang 4 ▶</a>
-      <button class="primary" id="btn-submit">Submit this page</button>
-      <button class="ghost" id="btn-clear">Clear selections</button>
-      <button class="ghost" id="btn-results">View Results</button>
+      <a class="ghost" id="prev2" href="#" style="text-decoration:none;display:none;">◀ Trang trước</a>
+      <a class="ghost" id="next2" href="#" style="text-decoration:none;">Trang sau ▶</a>
+      <button class="primary" id="btn-submit2">Submit this page</button>
+      <button class="ghost" id="btn-clear2">Clear selections</button>
+      <button class="ghost" id="btn-results2">View Results</button>
     </div>
   </div>
 </main>
 <script>
-
+const PAGE_NUM = 1; // <<< CHANGE THIS to 1..5 for each page
 const STORAGE_KEY = "uscis_vi_2008_quiz_full";
+
 function loadState(){
   const raw = localStorage.getItem(STORAGE_KEY);
   if(!raw) return { pages: {} };
@@ -65,20 +61,16 @@ function loadState(){
 }
 function saveState(st){ localStorage.setItem(STORAGE_KEY, JSON.stringify(st)); }
 
-// Build a global distractor pool from all questions' first acceptable answer
 function buildPool(dataset){
   const pool = [];
   dataset.questions.forEach(q => {
     const a = (q.answers && q.answers.length) ? q.answers[0].trim() : null;
     if (a && a.length <= 120) pool.push(a);
   });
-  // de-dup
   return Array.from(new Set(pool));
 }
-
 function makeChoices(correct, pool, k=3){
   const candidates = pool.filter(p => p !== correct);
-  // shuffle
   for (let i = candidates.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
@@ -97,29 +89,16 @@ function makeChoices(correct, pool, k=3){
     if (g !== correct && !distractors.includes(g)) distractors.push(g);
   }
   const opts = [correct, ...distractors.slice(0,k)];
-  // shuffle
-  for (let i = opts.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [opts[i], opts[j]] = [opts[j], opts[i]];
-  }
+  for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
   const answer_index = opts.indexOf(correct);
   return {opts, answer_index};
 }
 
-const QUIZ_DATA = {"title": "Trắc nghiệm 100 Câu Hỏi Công Dân (USCIS 2008, tiếng Việt) — 5 trang (đầy đủ)", "source": "USCIS (100 Câu Hỏi và Câu Trả Lời, bản tiếng Việt, 2008).", "questions": [{"id": 1, "question": "Luật cao nhất của quốc gia là gì?", "answers": ["Hiến Pháp"]}, {"id": 2, "question": "Hiến Pháp có mục đích gì?", "answers": ["thiết lập chánh phủ"]}, {"id": 3, "question": "Ý tưởng tự quản trị nằm trong ba chữ đầu tiên của Hiến Pháp. Các chữ này là những chữ nào?", "answers": ["Chúng tôi người dân (We the People)"]}, {"id": 4, "question": "Tu chính án là gì?", "answers": ["một sự thay đổi (trong Hiến Pháp)"]}, {"id": 5, "question": "Ta gọi mười tu chính đầu tiên vào Hiến Pháp là gì?", "answers": ["Luật Dân Quyền"]}, {"id": 6, "question": "Kể ra Một quyền hoặc một tự do trong Tu Chính Án Đầu Tiên (First Amendment)?", "answers": ["tự do ngôn luận"]}, {"id": 7, "question": "Hiến Pháp có bao nhiêu tu chính án?", "answers": ["hai mươi bảy (27)"]}, {"id": 8, "question": "Bản Tuyên Ngôn Độc Lập có ý nghĩa gì?", "answers": ["thông báo nền độc lập của chúng ta (khỏi Anh Quốc)"]}, {"id": 9, "question": "Kể ra Hai quyền trong bản Bản Tuyên Ngôn Độc Lập?", "answers": ["quyền sống"]}, {"id": 10, "question": "Tự do tôn giáo là gì?", "answers": ["Bạn có thể theo bất cứ tôn giáo nào, hoặc không theo tôn giáo nào."]}, {"id": 11, "question": "Hệ thống kinh tế của Hoa Kỳ gọi là gì?", "answers": ["kinh tế tư bản"]}, {"id": 12, "question": "“Thượng tôn luật pháp” là gì?", "answers": ["Mọi người đều phải tuân theo luật pháp."]}, {"id": 13, "question": "Cho biết một ngành hay phần của công quyền.", "answers": ["Quốc Hội"]}, {"id": 14, "question": "Cách nào ngăn cản một ngành công quyền trở thành quá mạnh?", "answers": ["kiểm soát lẫn nhau"]}, {"id": 15, "question": "Ai phụ trách hành pháp?", "answers": ["Tổng Thống"]}, {"id": 16, "question": "Ai làm luật liên bang?", "answers": ["Quốc Hội"]}, {"id": 17, "question": "Hai phần của Quốc Hội Hoa Kỳ là gì?", "answers": ["Thượng và Hạ Nghị Viện"]}, {"id": 18, "question": "Có bao nhiêu Thượng Nghị Sĩ Liên Bang?", "answers": ["một trăm (100)"]}, {"id": 19, "question": "Chúng ta bầu Thượng Nghị Sĩ cho bao nhiêu năm?", "answers": ["sáu (6)"]}, {"id": 20, "question": "Ai là một trong những Thượng Nghị Sĩ Liên Bang của bạn?", "answers": ["Câu trả lời thay đổi tùy tiểu bang."]}, {"id": 21, "question": "Hạ-Nghị-Viện có bao nhiêu dân biểu?", "answers": ["bốn trăm ba mươi lăm (435)"]}, {"id": 22, "question": "Chúng ta bầu dân biểu cho mấy năm?", "answers": ["hai năm (2)"]}, {"id": 23, "question": "Cho biết tên dân biểu của bạn.", "answers": ["Câu trả lời sẽ thay đổi tùy nơi."]}, {"id": 24, "question": "Thượng-nghị-sĩ đại diện ai?", "answers": ["Tất cả người dân trong tiểu bang"]}, {"id": 25, "question": "Tại sao có những tiểu bang có nhiều đại biểu hơn các tiểu bang khác?", "answers": ["(Vì) dân số tiểu bang đó"]}, {"id": 26, "question": "Nhiệm kỳ Tổng Thống là mấy năm?", "answers": ["Bốn (4) năm"]}, {"id": 27, "question": "Bầu Tổng Thống vào tháng nào?", "answers": ["Tháng Mười Một"]}, {"id": 28, "question": "Hiện nay tên Tổng Thống Hoa Kỳ là gì?", "answers": ["Xin ghé thăm trang uscis.gov/citizenship/testupdates để biết tên của Tổng Thống Hoa Kỳ."]}, {"id": 29, "question": "Hiện nay tên Phó Tổng Thống Hoa Kỳ là gì?", "answers": ["Xin ghé thăm trang uscis.gov/citizenship/testupdates để biết tên của Phó Tổng Thống Hoa Kỳ."]}, {"id": 30, "question": "Nếu Tổng Thống không còn làm việc được nữa, ai sẽ thay thế làm Tổng Thống?", "answers": ["Phó Tổng Thống"]}, {"id": 31, "question": "Nếu cả Tổng Thống và Phó Tổng Thống không còn làm việc được nữa, ai sẽ thay thế?", "answers": ["Chủ Tịch Hạ Nghị Viện"]}, {"id": 32, "question": "Ai là Tổng Tư Lệnh quân đội?", "answers": ["Tổng Thống"]}, {"id": 33, "question": "Ai sẽ ký dự thảo luật thành luật?", "answers": ["Tổng Thống"]}, {"id": 34, "question": "Ai có quyền phủ quyết các dự luật?", "answers": ["Tổng Thống"]}, {"id": 35, "question": "Nội các của Tổng Thống làm gì?", "answers": ["Cố vấn cho Tổng Thống"]}, {"id": 36, "question": "Kể ra Hai chức vụ trong hàng nội các.", "answers": ["Bộ Trưởng Canh Nông"]}, {"id": 37, "question": "Ngành tư pháp làm gì?", "answers": ["duyệt lại luật lệ"]}, {"id": 38, "question": "Tòa án cao nhất ở Hoa Kỳ là gì?", "answers": ["Tối Cao Pháp Viện"]}, {"id": 39, "question": "Có bao nhiêu thẩm phán ở Tối Cao Pháp Viện?", "answers": ["Xin ghé thăm trang uscis.gov/citizenship/testupdates để biết số Thẩm Phán của Tòa Án Tối Cao Pháp Viện."]}, {"id": 40, "question": "Ai đang là Chủ Tịch Tối Cao Pháp Viện?", "answers": ["Xin ghé thăm trang uscis.gov/citizenship/testupdates để biết tên của Chánh Án Tòa Án Tối Cao Pháp Viện Hoa Kỳ."]}, {"id": 41, "question": "Theo Hiến Pháp, chánh phủ liên bang có một số quyền. Một trong các quyền của chánh phủ liên bang là?", "answers": ["in tiền"]}, {"id": 42, "question": "Theo Hiến Pháp, các tiểu bang có một số quyền. Một trong những quyền này là gì?", "answers": ["cung cấp trường học và giáo dục"]}, {"id": 43, "question": "Thống Đốc tiểu bang của bạn tên gì?", "answers": ["Câu trả lời tùy tiểu bang."]}, {"id": 44, "question": "Thủ phủ của tiểu bang bạn tên gì?", "answers": ["Câu trả lời tùy theo tiểu bang."]}, {"id": 45, "question": "Hai đảng chính của Hoa Kỳ là gì?", "answers": ["Dân Chủ và Cộng Hòa"]}, {"id": 46, "question": "Đảng của Tổng Thống hiện tại là đảng nào?", "answers": ["Xin ghé thăm trang uscis.gov/citizenship/testupdates để biết thông tin về chính đảng của Tổng Thống Hoa Kỳ."]}, {"id": 47, "question": "Chủ Tịch Hạ Viện hiện thời tên gì?", "answers": ["Xin ghé thăm trang uscis.gov/citizenship/testupdates để biết tên của Chủ Tịch Hạ viện Dân Biểu Hoa Kỳ."]}, {"id": 48, "question": "Có bốn tu chính án Hiến Pháp về việc ai có quyền bầu cử. Kể ra Một trong các thứ đó.", "answers": ["Công dân mười tám (18) tuổi và hơn (được đi bầu)."]}, {"id": 49, "question": "Một trong các bổn phận chỉ dành riêng cho công dân Hoa Kỳ là gì?", "answers": ["phục vụ trong bồi thẩm đoàn"]}, {"id": 50, "question": "Cho biết một quyền của riêng công dân Hoa Kỳ.", "answers": ["tham gia bầu cử cấp liên bang"]}, {"id": 51, "question": "Cho biết hai quyền của mỗi người sống ở Hoa Kỳ?", "answers": ["tự do phát biểu ý kiến"]}, {"id": 52, "question": "Khi nói Lời Tuyên Thệ Trung Thành (Pledge of Allegiance), chúng ta chứng tỏ sự trung thành với cái gì?", "answers": ["Hoa Kỳ"]}, {"id": 53, "question": "Khi trở thành công dân Hoa Kỳ, một trong những lời hứa của bạn là gì?", "answers": ["từ bỏ sự trung thành với các quốc gia khác"]}, {"id": 54, "question": "Công dân phải bao nhiêu tuổi mới được bầu Tổng Thống?", "answers": ["Mười Tám (18) và hơn"]}, {"id": 55, "question": "Có hai cách công dân Hoa Kỳ có thể tham dự vào nền dân chủ là các cách nào?", "answers": ["bầu cử"]}, {"id": 56, "question": "Ngày cuối cùng có thể nạp mẫu khai thuế cho liên bang là?", "answers": ["15 Tháng Tư"]}, {"id": 57, "question": "Khi nào tất cả nam giới phải ghi tên cho Sở Quân Vụ (Selective Service)?", "answers": ["ở tuổi mười tám (18)"]}, {"id": 58, "question": "Một trong những lý do khiến người di dân thời thuộc địa tới Mỹ Châu là gì?", "answers": ["tự do"]}, {"id": 59, "question": "Những ai sống tại Mỹ trước khi người Âu Châu tới?", "answers": ["người da đỏ Mỹ Châu"]}, {"id": 60, "question": "Nhóm người nào được mang tới Mỹ Châu và bán làm nô lệ?", "answers": ["người Phi Châu"]}, {"id": 61, "question": "Tại sao những người di dân thời thuộc địa chống lại người Anh?", "answers": ["vì thuế má cao quá (phải đóng thuế mà không có người đại diện)"]}, {"id": 62, "question": "Ai viết Bản Tuyên Ngôn Độc Lập?", "answers": ["(Thomas) Jefferson"]}, {"id": 63, "question": "Bản Tuyên Ngôn Độc Lập được chấp nhận lúc nào?", "answers": ["4 Tháng Bẩy 1776"]}, {"id": 64, "question": "Có 13 tiểu bang nguyên thủy. Cho biết ba tiểu bang.", "answers": ["New Hampshire"]}, {"id": 65, "question": "Việc gì xảy ra tại Đại Hội Lập Hiến (Constitutional Convention)?", "answers": ["Soạn thảo Hiến Pháp."]}, {"id": 66, "question": "Hiến Pháp được soạn thảo khi nào?", "answers": ["1787"]}, {"id": 67, "question": "Các bài tham luận gọi là Federalist Papers có mục đích hỗ trợ việc thông qua Hiến Pháp Hoa Kỳ. Kể tên một trong những người viết tham luận.", "answers": ["(James) Madison"]}, {"id": 68, "question": "Một việc gì làm Benjamin Franklin nổi tiếng?", "answers": ["nhà ngoại giao Hoa Kỳ"]}, {"id": 69, "question": "Ai được gọi là cha đẻ của nước Mỹ?", "answers": ["(George) Washington"]}, {"id": 70, "question": "Ai là Tổng Thống đầu tiên?", "answers": ["(George) Washington"]}, {"id": 71, "question": "Hoa Kỳ mua lãnh thổ nào của Pháp vào năm 1803?", "answers": ["Lãnh Thổ Louisiana"]}, {"id": 72, "question": "Nói tên một trong những cuộc chiến Hoa Kỳ tham dự thời 1800.", "answers": ["Chiến tranh 1812"]}, {"id": 73, "question": "Tên gọi của cuộc chiến trên đất Hoa Kỳ giữa miền Bắc và miền Nam là gì.", "answers": ["Nội chiến"]}, {"id": 74, "question": "Cho biết một vấn đề đưa tới cuộc nội chiến.", "answers": ["vấn đề nô lệ"]}, {"id": 75, "question": "Một điều quan trọng mà Abraham Lincoln làm là gì?", "answers": ["giải phóng nô lệ (Tuyên Ngôn Giải Phóng)"]}, {"id": 76, "question": "Tuyên Ngôn Giải Phóng làm gì?", "answers": ["giải phóng nô lệ"]}, {"id": 77, "question": "Bà Susan B. Anthony làm gì?", "answers": ["tranh đấu cho quyền phụ nữ"]}, {"id": 78, "question": "Cho biết một cuộc chiến mà Hoa Kỳ tham dự vào thập niên 1900.", "answers": ["Thế Chiến Thứ Nhất"]}, {"id": 79, "question": "Ai là Tổng Thống trong Thế Chiến Thứ Nhất?", "answers": ["(Woodrow) Wilson"]}, {"id": 80, "question": "Ai là Tổng Thống trong thời kỳ Khủng Hoảng Kinh Tế và Thế Chiến Thứ Hai?", "answers": ["(Franklin) Roosevelt"]}, {"id": 81, "question": "Trong Thế Chiến Thứ Hai, Hoa Kỳ chiến đấu chống các nước nào?", "answers": ["Nhật Bản, Đức và Ý"]}, {"id": 82, "question": "Trước khi trở thành Tổng Thống, Eisenhower là tướng lãnh. Ông ta đánh trận nào?", "answers": ["Thế Chiến Thứ Hai"]}, {"id": 83, "question": "Trong thời kỳ Chiến Tranh Lạnh, quan tâm chính của Hoa Kỳ là gì?", "answers": ["Chủ Nghĩa Cộng Sản"]}, {"id": 84, "question": "Phong trào nào tìm cách chấm dứt sự phân biệt chủng tộc?", "answers": ["(phong trào) dân quyền"]}, {"id": 85, "question": "Martin Luther King, Jr. đã làm gì?", "answers": ["tranh đấu cho dân quyền"]}, {"id": 86, "question": "Biến cố lớn lao nào xảy ra vào ngày 11 tháng 9 năm 2001 tại Hoa Kỳ?", "answers": ["Bọn khủng bố tấn công Hoa Kỳ."]}, {"id": 87, "question": "Kể tên một bộ lạc da đỏ tại Mỹ.", "answers": ["Cherokee"]}, {"id": 88, "question": "Cho biết một trong hai con sông dài nhất ở Hoa Kỳ.", "answers": ["(Sông) Missouri"]}, {"id": 89, "question": "Biển nào ở bờ biển phía Tây Hoa Kỳ?", "answers": ["Thái-Bình-Dương"]}, {"id": 90, "question": "Biển nào ở bờ biển phía Đông Hoa Kỳ?", "answers": ["Đại-Tây-Dương"]}, {"id": 91, "question": "Cho biết một lãnh thổ hải ngoại của Hoa Kỳ.", "answers": ["Puerto Rico"]}, {"id": 92, "question": "Cho biết một trong những tiểu bang ráp ranh Gia-Nã-Đại.", "answers": ["Maine"]}, {"id": 93, "question": "Cho biết một trong những tiểu bang ráp ranh Mễ-Tây-Cơ.", "answers": ["California"]}, {"id": 94, "question": "Thủ đô của Hoa Kỳ tên gì?", "answers": ["Washington, D.C."]}, {"id": 95, "question": "Tượng Nữ Thần Tự Do ở đâu?", "answers": ["(Hải Cảng) Nữu Ước"]}, {"id": 96, "question": "Tại sao lá cờ Hoa Kỳ có 13 lằn gạch?", "answers": ["bởi vì đã có 13 thuộc địa nguyên thủy"]}, {"id": 97, "question": "Tại sao lá cờ Hoa Kỳ có 50 ngôi sao?", "answers": ["bởi vì mỗi tiểu bang có một ngôi sao"]}, {"id": 98, "question": "Tựa của bài quốc ca Hoa Kỳ là gì?", "answers": ["The Star-Spangled Banner"]}, {"id": 99, "question": "Ngày nào là ngày Lễ Độc Lập?", "answers": ["4 Tháng Bẩy"]}, {"id": 100, "question": "Cho biết hai ngày lễ quốc gia của Hoa Kỳ.", "answers": ["Tết Tây"]}]};
-const PAGE_NUM = 3;
-
-const QUIZ_DATA = __DATA__;
-const PAGE_NUM = 3;
-const START_INDEX = (PAGE_NUM-1)*20;
-const END_INDEX = Math.min(START_INDEX+20, QUIZ_DATA.questions.length);
-const QUESTIONS = QUIZ_DATA.questions.slice(START_INDEX, END_INDEX);
-const POOL = buildPool(QUIZ_DATA);
-
-// cache choices per question index to keep stable after submit
+let QUIZ_DATA = null;
+let POOL = null;
+let QUESTIONS = null;
 const CHOICES = {};
-
-let answers = Array(QUESTIONS.length).fill(null);
+let answers = [];
 let submitted = false;
 
 function el(tag, attrs={}, children=[]){
@@ -132,13 +111,12 @@ function el(tag, attrs={}, children=[]){
   for(const c of [].concat(children)) e.appendChild(c);
   return e;
 }
-
 function render(){
   const root = document.getElementById("quiz");
   root.innerHTML = "";
   QUESTIONS.forEach((q, i)=>{
     const card = el("div", {class:"card"});
-    const title = el("div", {class:"q-title", html: `${START_INDEX+i+1}. ${q.question}`});
+    const title = el("div", {class:"q-title", html: `${(PAGE_NUM-1)*20 + i + 1}. ${q.question}`});
     const correct = (q.answers && q.answers.length) ? q.answers[0] : "";
     if (!CHOICES[i]){
       const built = makeChoices(correct, POOL, 3);
@@ -166,53 +144,62 @@ function render(){
   });
   updateScorePreview();
 }
-
 function updateScorePreview(){
   const sc = document.getElementById("score");
   let correct = 0;
-  for(let i=0;i<QUESTIONS.length;i++){
-    if(answers[i]===CHOICES[i].answer_index) correct++;
-  }
+  for(let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; }
   const done = answers.filter(a=>a!==null).length;
   sc.textContent = `Selected: ${done} / ${QUESTIONS.length} — If submit now: ${correct} / ${QUESTIONS.length}`;
 }
-
 function submitPage(){
   submitted = true;
   let correct = 0;
-  for(let i=0;i<QUESTIONS.length;i++){
-    if(answers[i]===CHOICES[i].answer_index) correct++;
-  }
+  for(let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; }
   const st = loadState();
-  st.pages[PAGE_NUM] = { score: correct, total: QUESTIONS.length, answers, start: START_INDEX, end: END_INDEX };
+  st.pages[PAGE_NUM] = { score: correct, total: QUESTIONS.length, answers };
   saveState(st);
   render();
-  const badge = document.getElementById("saved-badge");
-  badge.textContent = `Saved: Page ${PAGE_NUM} — ${correct} / ${QUESTIONS.length}`;
+  document.getElementById("saved-badge").textContent = `Saved: Page ${PAGE_NUM} — ${correct} / ${QUESTIONS.length}`;
 }
-
-function clearSelections(){
-  answers = Array(QUESTIONS.length).fill(null);
-  submitted = false;
-  render();
-}
-
+function clearSelections(){ answers = Array(QUESTIONS.length).fill(null); submitted = false; render(); }
 function loadExisting(){
   const st = loadState();
   const p = st.pages[PAGE_NUM];
-  if(p){
-    answers = p.answers || answers;
-    submitted = true;
-  }
+  if(p){ answers = p.answers || answers; submitted = true; }
+}
+
+function setupNav(){
+  const prev = document.getElementById("prev");
+  const next = document.getElementById("next");
+  const prev2 = document.getElementById("prev2");
+  const next2 = document.getElementById("next2");
+  if(PAGE_NUM>1){ prev.style.display = prev2.style.display = "inline-block"; prev.href = prev2.href = `page${PAGE_NUM-1}.html`; }
+  if(PAGE_NUM<5){ next.href = next2.href = `page${PAGE_NUM+1}.html`; } else { next.style.display = next2.style.display = "none"; }
 }
 
 document.getElementById("btn-submit").addEventListener("click", submitPage);
+document.getElementById("btn-submit2").addEventListener("click", submitPage);
 document.getElementById("btn-clear").addEventListener("click", clearSelections);
+document.getElementById("btn-clear2").addEventListener("click", clearSelections);
 document.getElementById("btn-results").addEventListener("click", ()=>{ window.location.href = "results.html"; });
+document.getElementById("btn-results2").addEventListener("click", ()=>{ window.location.href = "results.html"; });
 
-loadExisting();
-render();
-
+fetch("./data/questions_vi.json")
+  .then(r => r.json())
+  .then(data => {
+    QUIZ_DATA = data;
+    POOL = buildPool(data);
+    const start = (PAGE_NUM-1)*20;
+    QUESTIONS = data.questions.slice(start, start+20);
+    answers = Array(QUESTIONS.length).fill(null);
+    setupNav();
+    loadExisting();
+    render();
+  })
+  .catch(err => {
+    document.getElementById("quiz").innerHTML = "<div class='card'>Không tải được dữ liệu câu hỏi. Hãy kiểm tra file <code>data/questions_vi.json</code>.</div>";
+    console.error(err);
+  });
 </script>
 </body>
 </html>
