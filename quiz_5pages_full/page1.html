@@ -208,6 +208,12 @@ document.getElementById("btn-clear").addEventListener("click", clearSelections);
 document.getElementById("btn-clear2").addEventListener("click", clearSelections);
 document.getElementById("btn-results").addEventListener("click", ()=>{ window.location.href = "results.html"; });
 document.getElementById("btn-results2").addEventListener("click", ()=>{ window.location.href = "results.html"; });
+document.getElementById("btn-newuser").addEventListener("click", () => {
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem("USCIS_USER_ID");
+  location.reload();
+});
+
 
 fetch("./data/questions_vi.json")
   .then(r => r.json())
