@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>USCIS 100 Câu — Trang 2/5</title>
+<title>USCIS 100 Câu — Trang …/5</title>
 <style>
   body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; line-height:1.6; margin:0; padding:0; background:#f7f7f9; }
   header { background:#0f172a; color:#fff; padding:24px; }
@@ -19,113 +19,266 @@
   button { border:0; border-radius:12px; padding:12px 16px; font-weight:600; cursor:pointer; }
   .primary { background:#2563eb; color:#fff; }
   .ghost { background:#e2e8f0; }
+  button[disabled] { opacity:.6; cursor:not-allowed; }
   .badge { display:inline-block; background:#e2e8f0; border-radius:999px; padding:4px 10px; font-size:12px; color:#334155; }
 </style>
 </head>
 <body>
 <header>
-  <h1 style="margin:0">USCIS 100 Câu — Trang 2/5</h1>
-  <p class="small" style="margin-top:6px">Mỗi trang 20 câu. Nộp trang để lưu điểm vào “Kết quả”.</p>
+  <h1 style="margin:0">USCIS 100 Câu — Trang …/5</h1>
+  <p class="meta" style="margin-top:6px">Mỗi trang 20 câu. Nộp trang để lưu điểm. Chỉ khi trả lời hết và bấm “Hiện đáp án” mới thấy đáp án đúng.</p>
 </header>
+
 <main>
   <div class="card">
-    <div class="meta">Page progress: <span id="score" class="badge">0</span></div>
-    <div id="saved-badge" class="badge">Not saved</div>
+    <div class="meta">Tiến độ: <span id="score" class="badge">0</span></div>
+    <div id="saved-badge" class="badge">Chưa lưu</div>
     <div class="footer">
       <a class="ghost" id="prev" href="#" style="text-decoration:none; display:none;">◀ Trang trước</a>
       <a class="ghost" id="next" href="#" style="text-decoration:none;">Trang sau ▶</a>
-      <button class="primary" id="btn-submit">Submit this page</button>
-      <button class="ghost" id="btn-clear">Clear selections</button>
-      <button class="ghost" id="btn-results">View Results</button>
+      <button class="primary" id="btn-submit">Nộp trang này</button>
+      <button class="ghost" id="btn-clear">Xóa lựa chọn</button>
+      <button class="ghost" id="btn-reveal" disabled>Hiện đáp án</button>
+      <button class="ghost" id="btn-results">Xem Kết quả</button>
     </div>
   </div>
+
   <div id="quiz"></div>
+
   <div class="card">
     <div class="footer">
       <a class="ghost" id="prev2" href="#" style="text-decoration:none; display:none;">◀ Trang trước</a>
       <a class="ghost" id="next2" href="#" style="text-decoration:none;">Trang sau ▶</a>
-      <button class="primary" id="btn-submit2">Submit this page</button>
-      <button class="ghost" id="btn-clear2">Clear selections</button>
-      <button class="ghost" id="btn-results2">View Results</button>
+      <button class="primary" id="btn-submit2">Nộp trang này</button>
+      <button class="ghost" id="btn-clear2">Xóa lựa chọn</button>
+      <button class="ghost" id="btn-reveal2" disabled>Hiện đáp án</button>
+      <button class="ghost" id="btn-results2">Xem Kết quả</button>
     </div>
   </div>
 </main>
-<script>
-// Auto-detect page number from URL: page1.html ... page5.html
-const m = location.pathname.match(/page(\d+)\.html$/);
-const PAGE_NUM = m ? parseInt(m[1], 10) : 1;
 
-// Keep the header and tab title in sync
+<script>
+// ---------- Auto-detect page number ----------
+const m = location.pathname.match(/page(\d+)\.html$/i);
+const PAGE_NUM = m ? Math.max(1, Math.min(5, parseInt(m[1], 10))) : 1;
+
+// Sync header/title
 document.title = `USCIS 100 Câu — Trang ${PAGE_NUM}/5`;
 const h1 = document.querySelector('header h1');
 if (h1) h1.textContent = `USCIS 100 Câu — Trang ${PAGE_NUM}/5`;
 
-const STORAGE_KEY = "uscis_vi_2008_quiz_full_fetch";
+// ---------- Storage keys ----------
+const STORAGE_KEY = "uscis_vi_2008_quiz_full";   // keep same in results.html
+const USER_KEY    = "USCIS_USER_ID";
 
-function loadState(){ const raw = localStorage.getItem(STORAGE_KEY); if(!raw) return { pages: {} }; try { return JSON.parse(raw); } catch(e){ return { pages: {} }; } }
-function saveState(st){ localStorage.setItem(STORAGE_KEY, JSON.stringify(st)); }
-function buildPool(dataset){ const pool = []; dataset.questions.forEach(q => { const a = (q.answers && q.answers.length) ? q.answers[0].trim() : null; if (a && a.length <= 120) pool.push(a); }); return Array.from(new Set(pool)); }
-function makeChoices(correct, pool, k=3){
-  const candidates = pool.filter(p => p !== correct);
-  for (let i = candidates.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [candidates[i], candidates[j]] = [candidates[j], candidates[i]]; }
-  const distractors = [];
-  for (const c of candidates){ const cl=c.toLowerCase(), rl=correct.toLowerCase(); if (cl===rl) continue; if (cl.includes(rl) || rl.includes(cl)) continue; distractors.push(c); if (distractors.length>=k) break; }
-  const generic = ["Tôi không biết","Không áp dụng","Không có đáp án nào đúng"];
-  for (const g of generic){ if (distractors.length>=k) break; if (g!==correct && !distractors.includes(g)) distractors.push(g); }
-  const opts = [correct, ...distractors.slice(0,k)];
-  for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
-  return {opts, answer_index: opts.indexOf(correct)};
+// ---------- Per-user stable randomization ----------
+let userId = localStorage.getItem(USER_KEY);
+if (!userId) {
+  userId = [...crypto.getRandomValues(new Uint32Array(2))]
+             .map(n => n.toString(16).padStart(8,"0")).join("");
+  localStorage.setItem(USER_KEY, userId);
+}
+function xmur3(str){ let h=1779033703^str.length; for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=h<<13|h>>>19; }
+  return function(){ h=Math.imul(h^h>>>16,2246822507); h=Math.imul(h^h>>>13,3266489909); return (h^=h>>>16)>>>0; }; }
+function mulberry32(a){ return function(){ let t=a+=0x6D2B79F5; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
+function seededShuffle(arr, seedStr){
+  const seed = xmur3(seedStr)();
+  const rand = mulberry32(seed);
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j = Math.floor(rand()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; }
+  return a;
 }
 
-let QUIZ_DATA=null, POOL=null, QUESTIONS=null;
-const CHOICES={};
-let answers=[], submitted=false;
+// ---------- State helpers ----------
+function loadState(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) return { pages: {} };
+  try { return JSON.parse(raw); } catch { return { pages: {} }; }
+}
+function saveState(st){ localStorage.setItem(STORAGE_KEY, JSON.stringify(st)); }
 
-function el(tag, attrs={}, children=[]){ const e=document.createElement(tag); for(const [k,v] of Object.entries(attrs)){ if(k==="class") e.className=v; else if(k==="html") e.innerHTML=v; else e.setAttribute(k,v); } for(const c of [].concat(children)) e.appendChild(c); return e; }
+// ---------- Quiz helpers ----------
+function buildPool(dataset){
+  const pool = [];
+  dataset.questions.forEach(q => {
+    const a = (q.answers && q.answers.length) ? q.answers[0].trim() : null;
+    if (a && a.length <= 120) pool.push(a);
+  });
+  return Array.from(new Set(pool));
+}
+function makeChoices(correct, pool, k=3, seedStr=""){
+  const candidates = pool.filter(p => p !== correct);
+  const shuffled = seededShuffle(candidates, seedStr || (correct+"|pool"));
+  const distractors = [];
+  for (const c of shuffled){
+    const cl = c.toLowerCase(), rl = correct.toLowerCase();
+    if (cl === rl) continue;
+    if (cl.includes(rl) || rl.includes(cl)) continue;
+    distractors.push(c);
+    if (distractors.length >= k) break;
+  }
+  const generic = ["Tôi không biết","Không áp dụng","Không có đáp án nào đúng"];
+  for (const g of generic){
+    if (distractors.length >= k) break;
+    if (g !== correct && !distractors.includes(g)) distractors.push(g);
+  }
+  let opts = [correct, ...distractors.slice(0,k)];
+  opts = seededShuffle(opts, seedStr + "|opts"); // stable order per user+question
+  return { opts, answer_index: opts.indexOf(correct) };
+}
+
+// ---------- Page logic ----------
+let QUIZ_DATA = null, POOL = null, QUESTIONS = null;
+const CHOICES = {};
+let answers = [], submitted = false, reveal = false;
+
+function el(tag, attrs={}, children=[]){
+  const e = document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs)){
+    if(k==="class") e.className = v;
+    else if(k==="html") e.innerHTML = v;
+    else e.setAttribute(k,v);
+  }
+  for(const c of [].concat(children)) e.appendChild(c);
+  return e;
+}
+
+function canReveal(){
+  const done = answers.filter(a=>a!==null).length;
+  return submitted && done === QUESTIONS.length;
+}
+
+function updateControls(){
+  // score preview
+  const sc = document.getElementById("score");
+  if (sc){
+    let correct = 0;
+    for(let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; }
+    const done = answers.filter(a=>a!==null).length;
+    sc.textContent = `Đã chọn: ${done} / ${QUESTIONS.length} — Nếu nộp ngay: ${correct} / ${QUESTIONS.length}`;
+  }
+  // reveal buttons enable/disable
+  const r1 = document.getElementById("btn-reveal");
+  const r2 = document.getElementById("btn-reveal2");
+  const enable = canReveal();
+  if (r1) r1.disabled = !enable || reveal; // disable if not allowed or already revealed
+  if (r2) r2.disabled = !enable || reveal;
+}
 
 function render(){
-  const root=document.getElementById("quiz"); root.innerHTML="";
-  QUESTIONS.forEach((q,i)=>{
-    const card=el("div",{class:"card"});
-    const title=el("div",{class:"q-title", html:`${(PAGE_NUM-1)*20+i+1}. ${q.question}`});
-    const correct=(q.answers && q.answers.length)? q.answers[0] : "";
-    if(!CHOICES[i]){ const built=makeChoices(correct, POOL, 3); CHOICES[i]={choices:built.opts, answer_index:built.answer_index}; }
-    const choices=el("div",{class:"choices"});
-    CHOICES[i].choices.forEach((ch,j)=>{
-      const lbl=el("label"); const inp=el("input",{type:"radio",name:`q_${i}`});
-      if(answers[i]===j) inp.checked=true;
-      inp.addEventListener("change",()=>{ answers[i]=j; updateScorePreview(); });
-      lbl.appendChild(inp); lbl.appendChild(el("span",{html:ch}));
-      if(submitted){ const isCorrect=j===CHOICES[i].answer_index, isSelected=answers[i]===j; if(isCorrect) lbl.classList.add("correct"); if(isSelected && !isCorrect) lbl.classList.add("wrong"); }
+  const root = document.getElementById("quiz");
+  root.innerHTML = "";
+  QUESTIONS.forEach((q, i)=>{
+    const card = el("div", {class:"card"});
+    const title = el("div", {class:"q-title", html: `${(PAGE_NUM-1)*20 + i + 1}. ${q.question}`});
+    const correct = (q.answers && q.answers.length) ? q.answers[0] : "";
+    if (!CHOICES[i]){
+      const qid = q.id ?? ((PAGE_NUM-1)*20 + i + 1);
+      const built = makeChoices(correct, POOL, 3, `${userId}|q${qid}`);
+      CHOICES[i] = { choices: built.opts, answer_index: built.answer_index };
+    }
+    const choices = el("div", {class:"choices"});
+    CHOICES[i].choices.forEach((ch, j)=>{
+      const lbl = el("label");
+      const inp = el("input", {type:"radio", name:`q_${i}`});
+      if(answers[i]===j) inp.checked = true;
+      inp.addEventListener("change", ()=>{ answers[i]=j; updateControls(); });
+      lbl.appendChild(inp);
+      lbl.appendChild(el("span", {html: ch}));
+      // ONLY highlight when reveal is true (never on submit alone)
+      if(reveal){
+        const isCorrect = j===CHOICES[i].answer_index;
+        const isSelected = answers[i]===j;
+        if(isCorrect) lbl.classList.add("correct");
+        if(isSelected && !isCorrect) lbl.classList.add("wrong");
+      }
       choices.appendChild(lbl);
     });
-    card.appendChild(title); card.appendChild(choices); root.appendChild(card);
+    card.appendChild(title);
+    card.appendChild(choices);
+    root.appendChild(card);
   });
-  updateScorePreview();
+  updateControls();
 }
-function updateScorePreview(){ const sc=document.getElementById("score"); let correct=0; for(let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; } const done=answers.filter(a=>a!==null).length; sc.textContent=`Selected: ${done} / ${QUESTIONS.length} — If submit now: ${correct} / ${QUESTIONS.length}`; }
-function submitPage(){ submitted=true; let correct=0; for(let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; } const st=loadState(); st.pages[PAGE_NUM]={score:correct,total:QUESTIONS.length,answers}; saveState(st); render(); document.getElementById("saved-badge").textContent=`Saved: Page ${PAGE_NUM} — ${correct} / ${QUESTIONS.length}`; }
-function clearSelections(){ answers=Array(QUESTIONS.length).fill(null); submitted=false; render(); }
 
+function submitPage(){
+  submitted = true;           // save score, but DO NOT reveal
+  reveal = false;             // ensure no reveal happens on submit
+  let correct = 0;
+  for(let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; }
+  const st = loadState();
+  // persist reveal state too (so it stays hidden unless user clicks the button)
+  st.pages[PAGE_NUM] = { score: correct, total: QUESTIONS.length, answers, reveal };
+  saveState(st);
+  render();
+  const badge = document.getElementById("saved-badge");
+  if (badge) badge.textContent = `Đã lưu: Trang ${PAGE_NUM} — ${correct} / ${QUESTIONS.length}`;
+}
+
+function revealPage(){
+  if (!canReveal()) return;   // block until all answered & submitted
+  reveal = true;
+  const st = loadState();
+  if (st.pages[PAGE_NUM]) st.pages[PAGE_NUM].reveal = true;
+  saveState(st);
+  render();
+}
+
+function clearSelections(){
+  answers = Array(QUESTIONS.length).fill(null);
+  submitted = false;
+  reveal = false;
+  render();
+  const badge = document.getElementById("saved-badge");
+  if (badge) badge.textContent = `Chưa lưu`;
+}
+
+function loadExisting(){
+  const st = loadState();
+  const p = st.pages[PAGE_NUM];
+  if(p){
+    answers = Array.isArray(p.answers) ? p.answers : Array(QUESTIONS.length).fill(null);
+    submitted = !!p.total;      // if a score object exists, consider submitted
+    reveal = !!p.reveal;        // only reveal if previously chosen
+  }
+}
+
+function setupNav(){
+  const prev = document.getElementById("prev");
+  const next = document.getElementById("next");
+  const prev2 = document.getElementById("prev2");
+  const next2 = document.getElementById("next2");
+  if(PAGE_NUM>1){ prev.style.display = prev2.style.display = "inline-block"; prev.href = prev2.href = `page${PAGE_NUM-1}.html`; }
+  if(PAGE_NUM<5){ next.href = next2.href = `page${PAGE_NUM+1}.html`; } else { next.style.display = next2.style.display = "none"; }
+}
+
+// Wire buttons
 document.getElementById("btn-submit").addEventListener("click", submitPage);
 document.getElementById("btn-submit2").addEventListener("click", submitPage);
 document.getElementById("btn-clear").addEventListener("click", clearSelections);
 document.getElementById("btn-clear2").addEventListener("click", clearSelections);
-document.getElementById("btn-results").addEventListener("click", ()=>{ window.location.href="results.html"; });
-document.getElementById("btn-results2").addEventListener("click", ()=>{ window.location.href="results.html"; });
+document.getElementById("btn-results").addEventListener("click", ()=>{ window.location.href = "results.html"; });
+document.getElementById("btn-results2").addEventListener("click", ()=>{ window.location.href = "results.html"; });
+document.getElementById("btn-reveal").addEventListener("click", revealPage);
+document.getElementById("btn-reveal2").addEventListener("click", revealPage);
 
-if(PAGE_NUM>1){ const prev=document.getElementById("prev"); const prev2=document.getElementById("prev2"); prev.style.display=prev2.style.display="inline-block"; prev.href=prev2.href=`page${PAGE_NUM-1}.html`; }
-if(PAGE_NUM<5){ document.getElementById("next").href=`page${PAGE_NUM+1}.html`; document.getElementById("next2").href=`page${PAGE_NUM+1}.html`; } else { document.getElementById("next").style.display="none"; document.getElementById("next2").style.display="none"; }
-
-fetch("./data/questions_vi.json").then(r=>r.json()).then(data=>{
-  QUIZ_DATA=data; POOL=buildPool(data);
-  const start=(PAGE_NUM-1)*20; QUESTIONS=data.questions.slice(start,start+20);
-  answers=Array(QUESTIONS.length).fill(null);
-  render();
-}).catch(err=>{
-  document.getElementById("quiz").innerHTML = "<div class='card'>Không tải được dữ liệu câu hỏi. Kiểm tra <code>data/questions_vi.json</code>.</div>";
-  console.error(err);
-});
+// Load data, slice page, render
+fetch("./data/questions_vi.json")
+  .then(r => r.json())
+  .then(data => {
+    QUIZ_DATA = data;
+    POOL = buildPool(data);
+    const start = (PAGE_NUM-1)*20;
+    QUESTIONS = data.questions.slice(start, start+20);
+    answers = Array(QUESTIONS.length).fill(null);
+    setupNav();
+    loadExisting();
+    render();
+  })
+  .catch(err => {
+    document.getElementById("quiz").innerHTML = "<div class='card'>Không tải được dữ liệu câu hỏi. Hãy kiểm tra file <code>data/questions_vi.json</code>.</div>";
+    console.error(err);
+  });
 </script>
 </body>
 </html>
