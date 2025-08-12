@@ -68,7 +68,7 @@ const h1 = document.querySelector('header h1');
 if (h1) h1.textContent = `USCIS 100 Câu — Trang ${PAGE_NUM}/5`;
 
 // ---------- Storage keys ----------
-const STORAGE_KEY = "uscis_vi_2008_quiz_full";   // keep same in results.html
+const STORAGE_KEY = "uscis_vi_2008_quiz_full";   // must match results.html
 const USER_KEY    = "USCIS_USER_ID";
 
 // ---------- Per-user stable randomization ----------
@@ -149,7 +149,6 @@ function canReveal(){
 }
 
 function updateControls(){
-  // score preview
   const sc = document.getElementById("score");
   if (sc){
     let correct = 0;
@@ -157,11 +156,10 @@ function updateControls(){
     const done = answers.filter(a=>a!==null).length;
     sc.textContent = `Đã chọn: ${done} / ${QUESTIONS.length} — Nếu nộp ngay: ${correct} / ${QUESTIONS.length}`;
   }
-  // reveal buttons enable/disable
   const r1 = document.getElementById("btn-reveal");
   const r2 = document.getElementById("btn-reveal2");
   const enable = canReveal();
-  if (r1) r1.disabled = !enable || reveal; // disable if not allowed or already revealed
+  if (r1) r1.disabled = !enable || reveal;
   if (r2) r2.disabled = !enable || reveal;
 }
 
@@ -185,7 +183,6 @@ function render(){
       inp.addEventListener("change", ()=>{ answers[i]=j; updateControls(); });
       lbl.appendChild(inp);
       lbl.appendChild(el("span", {html: ch}));
-      // ONLY highlight when reveal is true (never on submit alone)
       if(reveal){
         const isCorrect = j===CHOICES[i].answer_index;
         const isSelected = answers[i]===j;
@@ -202,12 +199,11 @@ function render(){
 }
 
 function submitPage(){
-  submitted = true;           // save score, but DO NOT reveal
-  reveal = false;             // ensure no reveal happens on submit
+  submitted = true;
+  reveal = false; // do NOT reveal on submit
   let correct = 0;
   for(let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; }
   const st = loadState();
-  // persist reveal state too (so it stays hidden unless user clicks the button)
   st.pages[PAGE_NUM] = { score: correct, total: QUESTIONS.length, answers, reveal };
   saveState(st);
   render();
@@ -238,8 +234,8 @@ function loadExisting(){
   const p = st.pages[PAGE_NUM];
   if(p){
     answers = Array.isArray(p.answers) ? p.answers : Array(QUESTIONS.length).fill(null);
-    submitted = !!p.total;      // if a score object exists, consider submitted
-    reveal = !!p.reveal;        // only reveal if previously chosen
+    submitted = !!p.total;
+    reveal = !!p.reveal;
   }
 }
 
