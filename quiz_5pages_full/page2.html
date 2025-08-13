@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>USCIS 100 Câu — Trang …/5</title>
 <style>
+  .badge.success { background:#dcfce7; color:#166534; }
+.toast {
+  position: fixed; top:16px; right:16px;
+  background:#16a34a; color:#fff;
+  padding:12px 14px; border-radius:12px;
+  box-shadow:0 10px 20px rgba(0,0,0,.15);
+  opacity:0; pointer-events:none; transform:translateY(-8px);
+  transition:opacity .25s ease, transform .25s ease; z-index:9999;
+}
+.toast.show { opacity:1; transform:translateY(0); }
+
   body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; line-height:1.6; margin:0; padding:0; background:#f7f7f9; }
   header { background:#0f172a; color:#fff; padding:24px; }
   main { max-width: 900px; margin: 0 auto; padding: 24px; }
@@ -36,7 +47,7 @@
     <div class="footer">
       <a class="ghost" id="prev" href="#" style="text-decoration:none; display:none;">◀ Trang trước</a>
       <a class="ghost" id="next" href="#" style="text-decoration:none;">Trang sau ▶</a>
-      <button class="primary" id="btn-submit">Nộp trang này</button>
+      <button class="primary" id="btn-submit" disabled>Nộp trang này</button>
       <button class="ghost" id="btn-clear">Xóa lựa chọn</button>
       <button class="ghost" id="btn-reveal" disabled>Hiện đáp án</button>
       <button class="ghost" id="btn-results">Xem Kết quả</button>
@@ -49,7 +60,7 @@
     <div class="footer">
       <a class="ghost" id="prev2" href="#" style="text-decoration:none; display:none;">◀ Trang trước</a>
       <a class="ghost" id="next2" href="#" style="text-decoration:none;">Trang sau ▶</a>
-      <button class="primary" id="btn-submit2">Nộp trang này</button>
+      <button class="primary" id="btn-submit2" disabled>Nộp trang này</button>
       <button class="ghost" id="btn-clear2">Xóa lựa chọn</button>
       <button class="ghost" id="btn-reveal2" disabled>Hiện đáp án</button>
       <button class="ghost" id="btn-results2">Xem Kết quả</button>
@@ -68,7 +79,7 @@ const h1 = document.querySelector('header h1');
 if (h1) h1.textContent = `USCIS 100 Câu — Trang ${PAGE_NUM}/5`;
 
 // ---------- Storage keys ----------
-const STORAGE_KEY = "uscis_vi_2008_quiz_full";   // keep same in results.html
+const STORAGE_KEY = "uscis_vi_2008_quiz_full";   // must match results.html
 const USER_KEY    = "USCIS_USER_ID";
 
 // ---------- Per-user stable randomization ----------
@@ -132,6 +143,15 @@ let QUIZ_DATA = null, POOL = null, QUESTIONS = null;
 const CHOICES = {};
 let answers = [], submitted = false, reveal = false;
 
+// Are all questions answered?
+function allAnswered(){
+  return Array.isArray(answers)
+      && Array.isArray(QUESTIONS)
+      && answers.length === QUESTIONS.length
+      && answers.every(a => a !== null);
+}
+
+
 function el(tag, attrs={}, children=[]){
   const e = document.createElement(tag);
   for(const [k,v] of Object.entries(attrs)){
@@ -149,21 +169,29 @@ function canReveal(){
 }
 
 function updateControls(){
-  // score preview
   const sc = document.getElementById("score");
   if (sc){
     let correct = 0;
-    for(let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; }
+    for (let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; }
     const done = answers.filter(a=>a!==null).length;
     sc.textContent = `Đã chọn: ${done} / ${QUESTIONS.length} — Nếu nộp ngay: ${correct} / ${QUESTIONS.length}`;
   }
-  // reveal buttons enable/disable
+
+  // enable Submit only when all answered
+  const canSubmit = allAnswered();
+  const s1 = document.getElementById("btn-submit");
+  const s2 = document.getElementById("btn-submit2");
+  if (s1) s1.disabled = !canSubmit;
+  if (s2) s2.disabled = !canSubmit;
+
+  // Reveal stays disabled until submitted & all answered and not already revealed
+  const enableReveal = submitted && allAnswered() && !reveal;
   const r1 = document.getElementById("btn-reveal");
   const r2 = document.getElementById("btn-reveal2");
-  const enable = canReveal();
-  if (r1) r1.disabled = !enable || reveal; // disable if not allowed or already revealed
-  if (r2) r2.disabled = !enable || reveal;
+  if (r1) r1.disabled = !enableReveal;
+  if (r2) r2.disabled = !enableReveal;
 }
+
 
 function render(){
   const root = document.getElementById("quiz");
@@ -185,7 +213,6 @@ function render(){
       inp.addEventListener("change", ()=>{ answers[i]=j; updateControls(); });
       lbl.appendChild(inp);
       lbl.appendChild(el("span", {html: ch}));
-      // ONLY highlight when reveal is true (never on submit alone)
       if(reveal){
         const isCorrect = j===CHOICES[i].answer_index;
         const isSelected = answers[i]===j;
@@ -200,19 +227,40 @@ function render(){
   });
   updateControls();
 }
+  
+function showToast(msg, ms=2500){
+  const t = document.getElementById("toast");
+  if (!t) return;
+  t.textContent = msg;
+  t.hidden = false;
+  // kick in the transition
+  requestAnimationFrame(()=> t.classList.add("show"));
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(()=>{
+    t.classList.remove("show");
+    setTimeout(()=>{ t.hidden = true; }, 250);
+  }, ms);
+}
 
 function submitPage(){
-  submitted = true;           // save score, but DO NOT reveal
-  reveal = false;             // ensure no reveal happens on submit
+  submitted = true;
+  reveal = false; // do NOT reveal on submit
   let correct = 0;
   for(let i=0;i<QUESTIONS.length;i++){ if(answers[i]===CHOICES[i].answer_index) correct++; }
+
   const st = loadState();
-  // persist reveal state too (so it stays hidden unless user clicks the button)
   st.pages[PAGE_NUM] = { score: correct, total: QUESTIONS.length, answers, reveal };
   saveState(st);
+
   render();
+
+  // ✅ success indicator (badge + toast)
   const badge = document.getElementById("saved-badge");
-  if (badge) badge.textContent = `Đã lưu: Trang ${PAGE_NUM} — ${correct} / ${QUESTIONS.length}`;
+  if (badge){
+    badge.textContent = `Đã nộp: Trang ${PAGE_NUM} — ${correct} / ${QUESTIONS.length}`;
+    badge.classList.add("success");
+  }
+  showToast(`✅ Đã nộp Trang ${PAGE_NUM}. Điểm: ${correct}/${QUESTIONS.length}`);
 }
 
 function revealPage(){
@@ -229,6 +277,9 @@ function clearSelections(){
   submitted = false;
   reveal = false;
   render();
+  const b2 = document.getElementById("saved-badge");
+if (b2){ b2.textContent = "Chưa lưu"; b2.classList.remove("success"); }
+
   const badge = document.getElementById("saved-badge");
   if (badge) badge.textContent = `Chưa lưu`;
 }
@@ -238,8 +289,20 @@ function loadExisting(){
   const p = st.pages[PAGE_NUM];
   if(p){
     answers = Array.isArray(p.answers) ? p.answers : Array(QUESTIONS.length).fill(null);
-    submitted = !!p.total;      // if a score object exists, consider submitted
-    reveal = !!p.reveal;        // only reveal if previously chosen
+    submitted = !!p.total;
+    reveal = !!p.reveal;
+    const b = document.getElementById("saved-badge");
+if (b){
+  if (submitted){
+    const p = st.pages[PAGE_NUM] || {};
+    b.textContent = `Đã nộp: Trang ${PAGE_NUM} — ${(p.score ?? 0)} / ${(p.total ?? QUESTIONS.length)}`;
+    b.classList.add("success");
+  } else {
+    b.textContent = "Chưa lưu";
+    b.classList.remove("success");
+  }
+}
+
   }
 }
 
@@ -253,6 +316,15 @@ function setupNav(){
 }
 
 // Wire buttons
+document.getElementById("btn-submit").addEventListener("click", ()=>{
+  if (!allAnswered()) { alert("Hãy trả lời đủ 20 câu trước khi nộp."); return; }
+  submitPage();
+});
+document.getElementById("btn-submit2").addEventListener("click", ()=>{
+  if (!allAnswered()) { alert("Hãy trả lời đủ 20 câu trước khi nộp."); return; }
+  submitPage();
+});
+  
 document.getElementById("btn-submit").addEventListener("click", submitPage);
 document.getElementById("btn-submit2").addEventListener("click", submitPage);
 document.getElementById("btn-clear").addEventListener("click", clearSelections);
@@ -280,5 +352,6 @@ fetch("./data/questions_vi.json")
     console.error(err);
   });
 </script>
+  <div id="toast" class="toast" hidden></div>
 </body>
 </html>
